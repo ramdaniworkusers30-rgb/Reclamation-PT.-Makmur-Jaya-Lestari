@@ -1,0 +1,1871 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MJL REKLAMASI MONITORING SYSTEM - PT Makmur Jaya Lestari</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            mjl: {
+              green: '#10b981',
+              darkgreen: '#047857',
+              blue: '#3b82f6',
+              yellow: '#f59e0b',
+              red: '#ef4444',
+              gray: '#6b7280',
+              bgdark: '#0b1329',
+              carddark: '#111c38',
+              borderdark: '#1e293b'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Leaflet GIS CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Proj4js for UTM conversion -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+
+  <!-- Custom Styles -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0b1329;
+      color: #f8fafc;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b1329;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+
+    /* Map styling */
+    #map {
+      height: 100%;
+      min-height: 520px;
+      width: 100%;
+      border-radius: 0.75rem;
+      z-index: 10;
+    }
+
+    .leaflet-popup-content-wrapper {
+      background-color: #111c38 !important;
+      color: #f8fafc !important;
+      border: 1px solid #334155;
+      border-radius: 0.5rem;
+      padding: 4px;
+    }
+    .leaflet-popup-tip {
+      background-color: #111c38 !important;
+    }
+
+    /* Print styles for executive report */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #print-report-area, #print-report-area * {
+        visibility: visible;
+      }
+      #print-report-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background-color: white !important;
+        color: black !important;
+        padding: 20px;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+
+    /* Custom Leaflet Control Badges */
+    .leaflet-control-utm {
+      background: rgba(17, 28, 56, 0.9);
+      border: 1px solid #334155;
+      color: #38bdf8;
+      padding: 6px 12px;
+      font-size: 11px;
+      font-family: monospace;
+      border-radius: 6px;
+      backdrop-filter: blur(4px);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 flex flex-col min-h-screen">
+
+  <!-- Top Navigation Header -->
+  <header class="bg-slate-900/90 border-b border-slate-800 sticky top-0 z-50 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <!-- Left: Logo & Title -->
+        <div class="flex items-center space-x-3">
+          <!-- PT Makmur Jaya Lestari Logo SVG replica based on provided image -->
+          <div class="flex-shrink-0 bg-white/5 p-1 rounded-lg border border-slate-700/50">
+            <svg class="h-9 w-9" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M150 15 L280 250 L200 250 L150 160 L100 250 L20 250 Z" fill="#2e7d32" />
+              <circle cx="150" cy="170" r="55" fill="none" stroke="#ffffff" stroke-width="12" />
+              <circle cx="150" cy="170" r="48" fill="#e91e63" />
+              <!-- Globe grid lines -->
+              <ellipse cx="150" cy="170" rx="48" ry="18" fill="none" stroke="#ffffff" stroke-width="3"/>
+              <ellipse cx="150" cy="170" rx="48" ry="34" fill="none" stroke="#ffffff" stroke-width="3"/>
+              <line x1="150" y1="122" x2="150" y2="218" stroke="#ffffff" stroke-width="3"/>
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="font-extrabold text-base sm:text-lg tracking-wider text-emerald-400">MJL REKLAMASI MONITORING SYSTEM</h1>
+              <span class="bg-emerald-500/20 text-emerald-400 text-xs px-2 py-0.5 rounded font-mono border border-emerald-500/30">v2.6</span>
+            </div>
+            <p class="text-xs text-slate-400 hidden sm:block">PT Makmur Jaya Lestari — Site Pulau Mabuli, Halmahera Timur (UTM 52N)</p>
+          </div>
+        </div>
+
+        <!-- Right: Actions & Controls -->
+        <div class="flex items-center space-x-3">
+          
+          <!-- Period Selector -->
+          <div class="flex items-center bg-slate-800 rounded-lg px-2 py-1 border border-slate-700">
+            <i class="fa-regular fa-calendar text-emerald-400 text-xs mr-2"></i>
+            <select id="periodFilter" onchange="app.changePeriod(this.value)" class="bg-transparent text-xs text-slate-200 focus:outline-none cursor-pointer font-medium">
+              <option value="Agustus 2026" selected>Agustus 2026</option>
+              <option value="Juli 2026">Juli 2026</option>
+              <option value="Juni 2026">Juni 2026</option>
+              <option value="Mei 2026">Mei 2026</option>
+            </select>
+          </div>
+
+          <!-- Status Indicator -->
+          <div class="hidden lg:flex items-center space-x-2 bg-emerald-950/60 border border-emerald-800/60 rounded-lg px-3 py-1">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="text-xs font-semibold text-emerald-300">Live GIS Data</span>
+          </div>
+
+          <!-- Quick Action Buttons -->
+          <button onclick="app.resetToDefaults()" title="Reset Data" class="p-2 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition">
+            <i class="fa-solid fa-rotate-right text-xs"></i>
+          </button>
+          <button onclick="app.toggleTheme()" id="themeToggleBtn" title="Toggle Light/Dark Theme" class="p-2 text-yellow-400 hover:text-yellow-300 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition">
+            <i class="fa-solid fa-sun text-xs"></i>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Layout Container -->
+  <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+
+    <!-- Sidebar Menu Navigation -->
+    <aside class="w-full md:w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0">
+      <div class="p-4 flex flex-col h-full justify-between overflow-y-auto">
+        <nav class="space-y-1" id="sidebarNav">
+          <button onclick="app.switchTab('dashboard')" id="nav-dashboard" class="sidebar-btn active w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition">
+            <i class="fa-solid fa-chart-pie w-5 text-emerald-400"></i>
+            <span>DASHBOARD</span>
+          </button>
+          <button onclick="app.switchTab('map')" id="nav-map" class="sidebar-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition">
+            <i class="fa-solid fa-map-location-dot w-5 text-sky-400"></i>
+            <span>MAP MONITORING</span>
+          </button>
+          <button onclick="app.switchTab('data')" id="nav-data" class="sidebar-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition">
+            <i class="fa-solid fa-table-list w-5 text-amber-400"></i>
+            <span>DATA PIT</span>
+          </button>
+          <button onclick="app.switchTab('progress')" id="nav-progress" class="sidebar-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition">
+            <i class="fa-solid fa-list-check w-5 text-purple-400"></i>
+            <span>PROGRESS TAHAPAN</span>
+          </button>
+          <button onclick="app.switchTab('compare')" id="nav-compare" class="sidebar-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition">
+            <i class="fa-solid fa-code-compare w-5 text-indigo-400"></i>
+            <span>RENCANA VS REALISASI</span>
+          </button>
+          <button onclick="app.switchTab('timeline')" id="nav-timeline" class="sidebar-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition">
+            <i class="fa-solid fa-timeline w-5 text-teal-400"></i>
+            <span>TIMELINE KEGIATAN</span>
+          </button>
+          <button onclick="app.switchTab('docs')" id="nav-docs" class="sidebar-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition">
+            <i class="fa-solid fa-images w-5 text-pink-400"></i>
+            <span>DOKUMENTASI FOTO</span>
+          </button>
+          <button onclick="app.switchTab('report')" id="nav-report" class="sidebar-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition">
+            <i class="fa-solid fa-file-contract w-5 text-red-400"></i>
+            <span>REPORT MONITORING</span>
+          </button>
+          <button onclick="app.switchTab('management')" id="nav-management" class="sidebar-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition">
+            <i class="fa-solid fa-database w-5 text-emerald-400"></i>
+            <span>DATA MANAGEMENT</span>
+          </button>
+          <button onclick="app.switchTab('settings')" id="nav-settings" class="sidebar-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition">
+            <i class="fa-solid fa-circle-info w-5 text-slate-400"></i>
+            <span>SETTINGS & MANUAL</span>
+          </button>
+        </nav>
+
+        <!-- Project Meta Information Footer -->
+        <div class="mt-6 pt-4 border-t border-slate-800 text-[11px] text-slate-500 space-y-1">
+          <p class="font-semibold text-slate-400">PT MAKMUR JAYA LESTARI</p>
+          <p><i class="fa-solid fa-location-dot mr-1"></i> Desa Soa Sangadji, Halmahera Timur</p>
+          <p><i class="fa-solid fa-compass mr-1"></i> WGS 1984 UTM Zone 52N</p>
+          <p class="text-emerald-500/80 pt-1">● Update Terbaru: <span id="lastUpdateSpan">20 Agt 2026</span></p>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Dynamic Content Workspace -->
+    <main class="flex-1 bg-slate-950 overflow-y-auto p-4 sm:p-6" id="mainContent">
+      
+      <!-- SECTION 1: DASHBOARD -->
+      <section id="sec-dashboard" class="space-y-6">
+        
+        <!-- Header Banner -->
+        <div class="bg-gradient-to-r from-slate-900 via-slate-900 to-emerald-950 border border-slate-800 rounded-xl p-5 shadow-lg relative overflow-hidden">
+          <div class="absolute right-0 top-0 bottom-0 w-1/3 bg-emerald-500/5 blur-3xl pointer-events-none"></div>
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <span class="bg-emerald-500/10 text-emerald-400 text-xs px-2.5 py-1 rounded-full border border-emerald-500/20 font-semibold">Executive Dashboard</span>
+              <h2 class="text-xl sm:text-2xl font-bold text-white mt-1">Ringkasan Monitoring Reklamasi</h2>
+              <p class="text-xs text-slate-400">Site Pulau Mabuli — PT Makmur Jaya Lestari (<span id="dashPeriodText">Agustus 2026</span>)</p>
+            </div>
+            <div class="flex items-center gap-3">
+              <button onclick="app.switchTab('map')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 transition">
+                <i class="fa-solid fa-map-marked-alt"></i> Buka GIS Map
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPI Statistic Cards Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+              <span class="text-xs font-medium">Total Area</span>
+              <i class="fa-solid fa-vector-square text-sky-400 text-xs"></i>
+            </div>
+            <div class="text-xl font-bold text-white" id="statTotalArea">0 Ha</div>
+            <p class="text-[10px] text-slate-500 mt-1">Target Keseluruhan</p>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+              <span class="text-xs font-medium">Selesai</span>
+              <i class="fa-solid fa-circle-check text-emerald-400 text-xs"></i>
+            </div>
+            <div class="text-xl font-bold text-emerald-400" id="statCompletedArea">0 Ha</div>
+            <p class="text-[10px] text-slate-500 mt-1">Status 100% Selesai</p>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+              <span class="text-xs font-medium">Dalam Proses</span>
+              <i class="fa-solid fa-spinner text-amber-400 text-xs"></i>
+            </div>
+            <div class="text-xl font-bold text-amber-400" id="statInProcessArea">0 Ha</div>
+            <p class="text-[10px] text-slate-500 mt-1">Sedang Dikembangkan</p>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+              <span class="text-xs font-medium">Belum Dimulai</span>
+              <i class="fa-solid fa-clock text-red-400 text-xs"></i>
+            </div>
+            <div class="text-xl font-bold text-red-400" id="statNotStartedArea">0 Ha</div>
+            <p class="text-[10px] text-slate-500 mt-1">Pending Pekerjaan</p>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+              <span class="text-xs font-medium">Overall Progress</span>
+              <i class="fa-solid fa-chart-line text-emerald-400 text-xs"></i>
+            </div>
+            <div class="text-xl font-bold text-emerald-400" id="statOverallProgress">0%</div>
+            <div class="w-full bg-slate-800 rounded-full h-1.5 mt-2 overflow-hidden">
+              <div id="statOverallProgressBar" class="bg-emerald-500 h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+              <span class="text-xs font-medium">Total PIT</span>
+              <i class="fa-solid fa-layer-group text-indigo-400 text-xs"></i>
+            </div>
+            <div class="text-xl font-bold text-white" id="statTotalPit">0 Area</div>
+            <p class="text-[10px] text-slate-500 mt-1">Blok Dimonitor</p>
+          </div>
+
+        </div>
+
+        <!-- Alert System Bar -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow">
+          <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-bell text-amber-400"></i> System Alerts & Deviasi
+          </h3>
+          <div id="alertCardsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <!-- Dynamic alerts generated via JS -->
+          </div>
+        </div>
+
+        <!-- Dashboard Charts Row 1 -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-4 shadow">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-sm font-bold text-white">Target vs Realisasi Luas Reklamasi (Ha)</h3>
+              <span class="text-xs text-slate-500">Per PIT</span>
+            </div>
+            <div class="h-64 relative">
+              <canvas id="chartTargetVSReal"></canvas>
+            </div>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-sm font-bold text-white">Distribusi Status Reklamasi</h3>
+              <span class="text-xs text-slate-500">Persentase Area</span>
+            </div>
+            <div class="h-64 relative flex items-center justify-center">
+              <canvas id="chartStatusDoughnut"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dashboard Charts Row 2 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-sm font-bold text-white">Progres Pekerjaan Per PIT (%)</h3>
+              <span class="text-xs text-slate-500">Realisasi Lapangan</span>
+            </div>
+            <div class="h-64 relative">
+              <canvas id="chartPitProgress"></canvas>
+            </div>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-sm font-bold text-white">Tren Akumulasi Progres Reklamasi 2026</h3>
+              <span class="text-xs text-slate-500">Bulanan (%)</span>
+            </div>
+            <div class="h-64 relative">
+              <canvas id="chartTrendLine"></canvas>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- SECTION 2: MAP MONITORING -->
+      <section id="sec-map" class="hidden space-y-4">
+        
+        <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 rounded-xl p-3">
+          <div class="flex items-center gap-3">
+            <span class="text-xs font-bold text-slate-300"><i class="fa-solid fa-layer-group text-sky-400 mr-1"></i> Layer GIS:</span>
+            <button onclick="mapController.toggleHatchLayer()" class="text-xs bg-slate-800 hover:bg-slate-700 text-sky-300 px-3 py-1.5 rounded border border-slate-700 flex items-center gap-1.5 transition">
+              <i class="fa-solid fa-border-none"></i> Overlay Rencana
+            </button>
+            <button onclick="mapController.fitBounds()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded border border-slate-700 flex items-center gap-1.5 transition">
+              <i class="fa-solid fa-expand"></i> Center Site
+            </button>
+            <button onclick="mapController.printMap()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded border border-slate-700 flex items-center gap-1.5 transition">
+              <i class="fa-solid fa-print"></i> Cetak Peta
+            </button>
+          </div>
+
+          <!-- GIS Legend Quick View -->
+          <div class="flex flex-wrap items-center gap-3 text-xs">
+            <span class="flex items-center gap-1 text-slate-300"><span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> Selesai</span>
+            <span class="flex items-center gap-1 text-slate-300"><span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span> Dalam Proses</span>
+            <span class="flex items-center gap-1 text-slate-300"><span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span> Belum Dimulai</span>
+            <span class="flex items-center gap-1 text-slate-300"><span class="w-3 h-3 rounded-full bg-sky-500 inline-block"></span> Rencana</span>
+          </div>
+        </div>
+
+        <!-- Map Canvas Box -->
+        <div class="relative bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl" style="height: calc(100vh - 200px);">
+          <div id="map"></div>
+
+          <!-- Compass / North Arrow Overlay -->
+          <div class="absolute top-4 right-4 z-[400] bg-slate-900/90 border border-slate-700 p-2 rounded-full shadow-lg pointer-events-none flex items-center justify-center w-10 h-10 text-emerald-400">
+            <i class="fa-solid fa-compass fa-lg animate-pulse"></i>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- SECTION 3: DATA PIT TABLE -->
+      <section id="sec-data" class="hidden space-y-4">
+        
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div>
+            <h2 class="text-base font-bold text-white">Data Rekapitulasi PIT Reklamasi</h2>
+            <p class="text-xs text-slate-400">Tabel detail seluruh area kerja PT Makmur Jaya Lestari</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button onclick="app.exportCSV()" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs font-semibold px-3 py-2 rounded-lg border border-slate-700 transition">
+              <i class="fa-solid fa-file-csv mr-1"></i> Export CSV
+            </button>
+            <button onclick="app.exportJSON()" class="bg-slate-800 hover:bg-slate-700 text-sky-400 text-xs font-semibold px-3 py-2 rounded-lg border border-slate-700 transition">
+              <i class="fa-solid fa-file-code mr-1"></i> Export JSON
+            </button>
+            <button onclick="window.print()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-2 rounded-lg border border-slate-700 transition">
+              <i class="fa-solid fa-print mr-1"></i> Print
+            </button>
+          </div>
+        </div>
+
+        <!-- Table Filters -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-500 text-xs"></i>
+            <input type="text" id="tableSearchInput" onkeyup="app.filterTable()" placeholder="Cari PIT, PIC, atau Status..." class="w-full bg-slate-900 border border-slate-800 text-slate-200 pl-9 pr-3 py-2 rounded-lg text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <select id="tableStatusFilter" onchange="app.filterTable()" class="w-full bg-slate-900 border border-slate-800 text-slate-200 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-emerald-500">
+              <option value="ALL">Semua Status</option>
+              <option value="Selesai">Selesai 🟢</option>
+              <option value="Dalam Proses">Dalam Proses 🟡</option>
+              <option value="Belum Dimulai">Belum Dimulai 🔴</option>
+            </select>
+          </div>
+          <div>
+            <select id="tableSortFilter" onchange="app.filterTable()" class="w-full bg-slate-900 border border-slate-800 text-slate-200 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-emerald-500">
+              <option value="name">Urutkan: Nama PIT</option>
+              <option value="progress-desc">Urutkan: Progres Tertinggi</option>
+              <option value="progress-asc">Urutkan: Progres Terendah</option>
+              <option value="area-desc">Urutkan: Luas Terbesar</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Responsive Data Table -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-x-auto shadow">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-800/60 text-slate-400 font-semibold uppercase">
+              <tr>
+                <th class="p-3 border-b border-slate-800">Nama PIT</th>
+                <th class="p-3 border-b border-slate-800">Luas (Ha)</th>
+                <th class="p-3 border-b border-slate-800">Target</th>
+                <th class="p-3 border-b border-slate-800">Realisasi (Ha)</th>
+                <th class="p-3 border-b border-slate-800">Progress</th>
+                <th class="p-3 border-b border-slate-800">Status</th>
+                <th class="p-3 border-b border-slate-800">PIC</th>
+                <th class="p-3 border-b border-slate-800">Last Update</th>
+                <th class="p-3 border-b border-slate-800 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="pitTableBody" class="divide-y divide-slate-800/50 text-slate-300">
+              <!-- Dynamic rows via JS -->
+            </tbody>
+          </table>
+        </div>
+
+      </section>
+
+      <!-- SECTION 4: PROGRESS TAHAPAN -->
+      <section id="sec-progress" class="hidden space-y-6">
+        
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <h2 class="text-base font-bold text-white mb-1">Monitoring Tahapan Pekerjaan Reklamasi</h2>
+          <p class="text-xs text-slate-400">Tahapan standar: Penataan Lahan, Drainase, Penebaran Top Soil, Revegetasi, & Pemeliharaan</p>
+        </div>
+
+        <!-- PIT Phase Cards List -->
+        <div id="phaseCardsContainer" class="space-y-6">
+          <!-- Dynamic cards rendered by JS -->
+        </div>
+
+      </section>
+
+      <!-- SECTION 5: RENCANA VS REALISASI -->
+      <section id="sec-compare" class="hidden space-y-6">
+        
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <h2 class="text-base font-bold text-white mb-1">Analisis Rencana vs Realisasi</h2>
+          <p class="text-xs text-slate-400">Evaluasi pencapaian fisik vs target perencanaan periode Agustus 2026</p>
+        </div>
+
+        <!-- Summary Statistics Table -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-x-auto shadow p-4">
+          <h3 class="text-sm font-bold text-slate-200 mb-3">Matriks Perbandingan Per PIT</h3>
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-800/80 text-slate-400 font-semibold uppercase">
+              <tr>
+                <th class="p-3 border-b border-slate-800">PIT Area</th>
+                <th class="p-3 border-b border-slate-800">Target Luas (Ha)</th>
+                <th class="p-3 border-b border-slate-800">Realisasi Luas (Ha)</th>
+                <th class="p-3 border-b border-slate-800">Deviasi (Ha)</th>
+                <th class="p-3 border-b border-slate-800">Target Progress (%)</th>
+                <th class="p-3 border-b border-slate-800">Realisasi Progress (%)</th>
+                <th class="p-3 border-b border-slate-800">Deviasi Progress (%)</th>
+                <th class="p-3 border-b border-slate-800">Status Capaian</th>
+              </tr>
+            </thead>
+            <tbody id="compareTableBody" class="divide-y divide-slate-800/50 text-slate-300">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+
+      </section>
+
+      <!-- SECTION 6: TIMELINE KEGIATAN -->
+      <section id="sec-timeline" class="hidden space-y-6">
+        
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <h2 class="text-base font-bold text-white mb-1">Timeline & Agenda Reklamasi Lapangan</h2>
+          <p class="text-xs text-slate-400">Kronologi pelaksanaan operasional Site Pulau Mabuli — Agustus 2026</p>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow relative">
+          <!-- Timeline Vertical Bar -->
+          <div class="absolute left-6 top-8 bottom-8 w-0.5 bg-slate-800"></div>
+
+          <div class="space-y-6 relative" id="timelineListContainer">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
+      </section>
+
+      <!-- SECTION 7: DOKUMENTASI FOTO LAPANGAN -->
+      <section id="sec-docs" class="hidden space-y-4">
+        
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div>
+            <h2 class="text-base font-bold text-white">Galeri Dokumentasi Reklamasi</h2>
+            <p class="text-xs text-slate-400">Foto kondisi sebelum (Before), proses (Progress), dan setelah (After)</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="app.filterGallery('ALL')" class="gallery-filter-btn active text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700">Semua</button>
+            <button onclick="app.filterGallery('Before')" class="gallery-filter-btn text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700">Before</button>
+            <button onclick="app.filterGallery('Progress')" class="gallery-filter-btn text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700">Progress</button>
+            <button onclick="app.filterGallery('After')" class="gallery-filter-btn text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700">After</button>
+          </div>
+        </div>
+
+        <!-- Photo Grid Container -->
+        <div id="photoGalleryGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <!-- Photo items rendered via JS -->
+        </div>
+
+      </section>
+
+      <!-- SECTION 8: REPORT MONITORING -->
+      <section id="sec-report" class="hidden space-y-4">
+        
+        <div class="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-xl p-4 no-print">
+          <div>
+            <h2 class="text-base font-bold text-white">Laporan Official Monitoring Reklamasi</h2>
+            <p class="text-xs text-slate-400">Format Laporan Engineering & Environmental PT Makmur Jaya Lestari</p>
+          </div>
+          <button onclick="window.print()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow flex items-center gap-2 transition">
+            <i class="fa-solid fa-print"></i> Cetak Laporan / Save PDF
+          </button>
+        </div>
+
+        <!-- Printable Document Area -->
+        <div id="print-report-area" class="bg-slate-900 border border-slate-800 rounded-xl p-8 shadow-2xl text-slate-200">
+          
+          <!-- Header Kop Surat -->
+          <div class="border-b-2 border-emerald-500 pb-4 mb-6 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <div class="w-16 h-16 flex-shrink-0 bg-white/10 rounded-lg p-1 flex items-center justify-center">
+                <svg class="h-12 w-12" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M150 15 L280 250 L200 250 L150 160 L100 250 L20 250 Z" fill="#2e7d32" />
+                  <circle cx="150" cy="170" r="55" fill="none" stroke="#ffffff" stroke-width="12" />
+                  <circle cx="150" cy="170" r="48" fill="#e91e63" />
+                </svg>
+              </div>
+              <div>
+                <h1 class="text-xl font-extrabold text-emerald-400 uppercase tracking-wide">PT MAKMUR JAYA LESTARI</h1>
+                <p class="text-xs font-semibold text-slate-300">DEPARTEMEN ENGINEERING & ENVIRONMENT</p>
+                <p class="text-xs text-slate-400">Site Pulau Mabuli, Desa Soa Sangadji, Halmahera Timur, Maluku Utara</p>
+              </div>
+            </div>
+            <div class="text-right text-xs">
+              <p class="font-bold text-slate-300">DOKUMEN MONITORING REKLAMASI</p>
+              <p class="text-slate-400">Periode: <span class="font-semibold text-emerald-400" id="repPeriod">Agustus 2026</span></p>
+              <p class="text-slate-400">Ref: MJL/ENV/REK/2026-08</p>
+            </div>
+          </div>
+
+          <!-- Exec Summary Table -->
+          <div class="mb-6 space-y-4">
+            <h3 class="text-sm font-bold text-white border-l-4 border-emerald-500 pl-2">I. RINGKASAN EKSEKUTIF</h3>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-950 p-4 rounded-lg border border-slate-800">
+              <div>
+                <span class="text-[11px] text-slate-400">Total Luas Monitoring:</span>
+                <p class="text-sm font-bold text-white" id="repTotalArea">0 Ha</p>
+              </div>
+              <div>
+                <span class="text-[11px] text-slate-400">Area Selesai 100%:</span>
+                <p class="text-sm font-bold text-emerald-400" id="repCompletedArea">0 Ha</p>
+              </div>
+              <div>
+                <span class="text-[11px] text-slate-400">Area Dalam Proses:</span>
+                <p class="text-sm font-bold text-amber-400" id="repProcessArea">0 Ha</p>
+              </div>
+              <div>
+                <span class="text-[11px] text-slate-400">Progress Kumulatif:</span>
+                <p class="text-sm font-bold text-sky-400" id="repOverallProgress">0%</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- PIT Details Table -->
+          <div class="mb-6 space-y-4">
+            <h3 class="text-sm font-bold text-white border-l-4 border-emerald-500 pl-2">II. STATUS DETAIL AREA REKLAMASI</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs border border-slate-800">
+                <thead class="bg-slate-800 text-slate-300">
+                  <tr>
+                    <th class="p-2 border border-slate-700">PIT</th>
+                    <th class="p-2 border border-slate-700">Luas (Ha)</th>
+                    <th class="p-2 border border-slate-700">Realisasi (Ha)</th>
+                    <th class="p-2 border border-slate-700">Progress</th>
+                    <th class="p-2 border border-slate-700">Status</th>
+                    <th class="p-2 border border-slate-700">PIC</th>
+                    <th class="p-2 border border-slate-700">Catatan Ringkas</th>
+                  </tr>
+                </thead>
+                <tbody id="reportTableBody" class="divide-y divide-slate-800">
+                  <!-- Rendered via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Executive Conclusion -->
+          <div class="mb-8 space-y-2">
+            <h3 class="text-sm font-bold text-white border-l-4 border-emerald-500 pl-2">III. KESIMPULAN & REKOMENDASI</h3>
+            <p class="text-xs text-slate-300 leading-relaxed bg-slate-950 p-4 rounded-lg border border-slate-800">
+              Kegiatan reklamasi pada periode Agustus 2026 berjalan secara konsisten di Site Pulau Mabuli. Area penataan lahan dan pengkondisian drainase pada PIT 3A-1 dan PIT 3A-2 mencatatkan progres signifikan. Revegetasi pada PIT 3A-3 telah tuntas 100%. Direkomendasikan untuk mempercepat penebaran topsoil pada PIT 3A-5 agar target Triwulan III terpenuhi.
+            </p>
+          </div>
+
+          <!-- Signature Block -->
+          <div class="pt-8 border-t border-slate-800 grid grid-cols-2 gap-8 text-center text-xs">
+            <div>
+              <p class="text-slate-400">Dibuat Oleh,</p>
+              <div class="h-16"></div>
+              <p class="font-bold text-slate-200">Engineering & Environmental Supt.</p>
+              <p class="text-[10px] text-slate-500">PT Makmur Jaya Lestari</p>
+            </div>
+            <div>
+              <p class="text-slate-400">Disetujui Oleh,</p>
+              <div class="h-16"></div>
+              <p class="font-bold text-slate-200">Project Manager / General Manager</p>
+              <p class="text-[10px] text-slate-500">PT Makmur Jaya Lestari</p>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- SECTION 9: DATA MANAGEMENT -->
+      <section id="sec-management" class="hidden space-y-6">
+        
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-base font-bold text-white">Kelola Data & GeoJSON PIT</h2>
+            <p class="text-xs text-slate-400">Form input/edit area reklamasi, import/export GeoJSON spasial</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="bg-slate-800 hover:bg-slate-700 text-sky-400 text-xs font-semibold px-3 py-2 rounded-lg border border-slate-700 cursor-pointer transition">
+              <i class="fa-solid fa-file-import mr-1"></i> Import GeoJSON
+              <input type="file" id="importGeoJsonInput" accept=".json,.geojson" onchange="app.importGeoJSON(event)" class="hidden">
+            </label>
+            <button onclick="app.openModalNewPIT()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-2 rounded-lg shadow transition">
+              <i class="fa-solid fa-plus mr-1"></i> Tambah PIT Baru
+            </button>
+          </div>
+        </div>
+
+        <!-- Data Management PIT List Table -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow">
+          <h3 class="text-sm font-bold text-white mb-3">Daftar Data PIT Terdaftar (LocalStorage)</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead class="bg-slate-800 text-slate-400">
+                <tr>
+                  <th class="p-2 border-b border-slate-800">PIT</th>
+                  <th class="p-2 border-b border-slate-800">Luas (Ha)</th>
+                  <th class="p-2 border-b border-slate-800">Progress</th>
+                  <th class="p-2 border-b border-slate-800">Status</th>
+                  <th class="p-2 border-b border-slate-800">PIC</th>
+                  <th class="p-2 border-b border-slate-800 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="mgmtTableBody" class="divide-y divide-slate-800/50">
+                <!-- Dynamic CRUD rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- SECTION 10: SETTINGS & MANUAL -->
+      <section id="sec-settings" class="hidden space-y-6">
+        
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow">
+          <h2 class="text-base font-bold text-white mb-2"><i class="fa-solid fa-book text-emerald-400 mr-2"></i> Petunjuk Penggunaan & Arsitektur Sistem</h2>
+          <p class="text-xs text-slate-400 leading-relaxed mb-4">
+            Aplikasi <strong>MJL Reklamasi Monitoring System</strong> dirancang khusus untuk memantau, mengelola, dan melaporkan kegiatan reklamasi tambang di Site Pulau Mabuli, Desa Soa Sangadji, Halmahera Timur.
+          </p>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div class="bg-slate-950 p-4 rounded-lg border border-slate-800">
+              <h3 class="font-bold text-emerald-400 mb-2">Sistem Koordinat GIS</h3>
+              <p class="text-slate-400 leading-relaxed">
+                Sistem menggunakan Proyeksi <strong>UTM WGS 1984 Zone 52N</strong> sesuai dengan standar Peta Situasi PT Makmur Jaya Lestari. Fitur converter interaktif menghitung Easting & Northing secara realtime.
+              </p>
+            </div>
+            <div class="bg-slate-950 p-4 rounded-lg border border-slate-800">
+              <h3 class="font-bold text-sky-400 mb-2">Arsitektur Masa Depan</h3>
+              <p class="text-slate-400 leading-relaxed">
+                Aplikasi ini bersifat standalone offline-ready. Data dapat diexport dalam format standar GeoJSON untuk dihubungkan ke PostgreSQL + PostGIS dan GeoServer di tahap lanjutan.
+              </p>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL 1: Detail PIT & Edit Popup -->
+  <div id="pitDetailModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[1000] hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl relative">
+      <button onclick="app.closePitModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+        <i class="fa-solid fa-xmark fa-lg"></i>
+      </button>
+      <div id="pitModalContent">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: Form Input / Edit PIT -->
+  <div id="pitFormModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[1000] hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl relative">
+      <button onclick="app.closeFormModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+        <i class="fa-solid fa-xmark fa-lg"></i>
+      </button>
+      <h3 class="text-base font-bold text-white mb-4" id="formModalTitle">Tambah Data PIT Reklamasi</h3>
+      <form id="pitCrudForm" onsubmit="app.handleFormSubmit(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="formPitId">
+        <div>
+          <label class="block text-slate-400 mb-1">Nama PIT *</label>
+          <input type="text" id="formPitName" required placeholder="Contoh: PIT 3A-1" class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 mb-1">Luas (Ha) *</label>
+            <input type="number" step="0.01" id="formPitArea" required placeholder="3.45" class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Status Pekerjaan *</label>
+            <select id="formPitStatus" required class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500">
+              <option value="Selesai">Selesai 🟢</option>
+              <option value="Dalam Proses">Dalam Proses 🟡</option>
+              <option value="Belum Dimulai">Belum Dimulai 🔴</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 mb-1">Progress (%) *</label>
+            <input type="number" min="0" max="100" id="formPitProgress" required placeholder="68" class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">PIC *</label>
+            <input type="text" id="formPitPic" required placeholder="Engineering / Survey" class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500">
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Catatan Monitoring</label>
+          <textarea id="formPitNotes" rows="2" placeholder="Catatan progress pekerjaan..." class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"></textarea>
+        </div>
+        <div class="pt-3 flex items-center justify-end gap-2">
+          <button type="button" onclick="app.closeFormModal()" class="px-4 py-2 bg-slate-800 text-slate-300 rounded hover:bg-slate-700">Batal</button>
+          <button type="submit" class="px-4 py-2 bg-emerald-600 text-white font-semibold rounded hover:bg-emerald-500">Simpan Data</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 3: Photo Lightbox -->
+  <div id="lightboxModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[2000] hidden flex flex-col items-center justify-center p-4">
+    <button onclick="app.closeLightbox()" class="absolute top-4 right-4 text-slate-400 hover:text-white p-2">
+      <i class="fa-solid fa-xmark fa-2xl"></i>
+    </button>
+    <div class="max-w-4xl w-full text-center space-y-3">
+      <img id="lightboxImg" src="" alt="Detail Dokumentasi" class="max-h-[75vh] mx-auto rounded-lg border border-slate-700 shadow-2xl object-contain">
+      <div class="text-xs text-slate-300" id="lightboxCaption"></div>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       MJL REKLAMASI MONITORING SYSTEM - CORE JAVASCRIPT APP ENGINE
+       ========================================================================== */
+
+    // Initial Default GeoJSON Dataset for PT Makmur Jaya Lestari Site Pulau Mabuli
+    const DEFAULT_REKLAMASI_DATA = [
+      {
+        id: "pit-3a-1",
+        name: "PIT 3A-1",
+        area: 3.45,
+        status: "Dalam Proses",
+        progress: 68,
+        targetArea: 3.45,
+        realArea: 2.35,
+        pic: "Engineering - Budi S.",
+        updateDate: "20-08-2026",
+        notes: "Pengaturan drainase parsial dan persiapan lahan revegetasi.",
+        lat: 0.8835,
+        lng: 128.2560,
+        stages: [
+          { name: "Tahap 1 — Penataan Lahan", status: "Selesai", target: "100%", realisasi: "100%", progress: 100 },
+          { name: "Tahap 2 — Pengaturan Drainase", status: "In Progress", target: "100%", realisasi: "80%", progress: 80 },
+          { name: "Tahap 3 — Penebaran Top Soil", status: "In Progress", target: "80%", realisasi: "60%", progress: 60 },
+          { name: "Tahap 4 — Revegetasi", status: "In Progress", target: "50%", realisasi: "40%", progress: 40 },
+          { name: "Tahap 5 — Pemeliharaan", status: "Belum", target: "20%", realisasi: "0%", progress: 0 }
+        ],
+        coordinates: [
+          [128.2545, 0.8845],
+          [128.2575, 0.8845],
+          [128.2575, 0.8825],
+          [128.2545, 0.8825]
+        ]
+      },
+      {
+        id: "pit-3a-2",
+        name: "PIT 3A-2",
+        area: 5.94,
+        status: "Dalam Proses",
+        progress: 72,
+        targetArea: 5.94,
+        realArea: 4.28,
+        pic: "Survey - Ahmad F.",
+        updateDate: "20-08-2026",
+        notes: "Penataan contour lereng utama dan penebaran top soil.",
+        lat: 0.8845,
+        lng: 128.2600,
+        stages: [
+          { name: "Tahap 1 — Penataan Lahan", status: "Selesai", target: "100%", realisasi: "100%", progress: 100 },
+          { name: "Tahap 2 — Pengaturan Drainase", status: "Selesai", target: "100%", realisasi: "100%", progress: 100 },
+          { name: "Tahap 3 — Penebaran Top Soil", status: "In Progress", target: "90%", realisasi: "80%", progress: 80 },
+          { name: "Tahap 4 — Revegetasi", status: "In Progress", target: "60%", realisasi: "50%", progress: 50 },
+          { name: "Tahap 5 — Pemeliharaan", status: "In Progress", target: "30%", realisasi: "20%", progress: 20 }
+        ],
+        coordinates: [
+          [128.2580, 0.8860],
+          [128.2620, 0.8860],
+          [128.2620, 0.8830],
+          [128.2580, 0.8830]
+        ]
+      },
+      {
+        id: "pit-3a-3",
+        name: "PIT 3A-3",
+        area: 4.10,
+        status: "Selesai",
+        progress: 100,
+        targetArea: 4.10,
+        realArea: 4.10,
+        pic: "Environmental - Denny K.",
+        updateDate: "18-08-2026",
+        notes: "Revegetasi jenis cover crop & tanaman pionir tumbuh 95%.",
+        lat: 0.8810,
+        lng: 128.2590,
+        stages: [
+          { name: "Tahap 1 — Penataan Lahan", status: "Selesai", target: "100%", realisasi: "100%", progress: 100 },
+          { name: "Tahap 2 — Pengaturan Drainase", status: "Selesai", target: "100%", realisasi: "100%", progress: 100 },
+          { name: "Tahap 3 — Penebaran Top Soil", status: "Selesai", target: "100%", realisasi: "100%", progress: 100 },
+          { name: "Tahap 4 — Revegetasi", status: "Selesai", target: "100%", realisasi: "100%", progress: 100 },
+          { name: "Tahap 5 — Pemeliharaan", status: "Selesai", target: "100%", realisasi: "100%", progress: 100 }
+        ],
+        coordinates: [
+          [128.2570, 0.8825],
+          [128.2610, 0.8825],
+          [128.2610, 0.8795],
+          [128.2570, 0.8795]
+        ]
+      },
+      {
+        id: "pit-3a-4",
+        name: "PIT 3A-4",
+        area: 2.80,
+        status: "Belum Dimulai",
+        progress: 0,
+        targetArea: 2.80,
+        realArea: 0.00,
+        pic: "Project Manager - Irwan T.",
+        updateDate: "15-08-2026",
+        notes: "Jadwal pekerjaan dialokasikan awal September 2026.",
+        lat: 0.8795,
+        lng: 128.2550,
+        stages: [
+          { name: "Tahap 1 — Penataan Lahan", status: "Belum", target: "0%", realisasi: "0%", progress: 0 },
+          { name: "Tahap 2 — Pengaturan Drainase", status: "Belum", target: "0%", realisasi: "0%", progress: 0 },
+          { name: "Tahap 3 — Penebaran Top Soil", status: "Belum", target: "0%", realisasi: "0%", progress: 0 },
+          { name: "Tahap 4 — Revegetasi", status: "Belum", target: "0%", realisasi: "0%", progress: 0 },
+          { name: "Tahap 5 — Pemeliharaan", status: "Belum", target: "0%", realisasi: "0%", progress: 0 }
+        ],
+        coordinates: [
+          [128.2530, 0.8810],
+          [128.2565, 0.8810],
+          [128.2565, 0.8780],
+          [128.2530, 0.8780]
+        ]
+      },
+      {
+        id: "pit-3a-5",
+        name: "PIT 3A-5",
+        area: 6.20,
+        status: "Dalam Proses",
+        progress: 35,
+        targetArea: 6.20,
+        realArea: 2.17,
+        pic: "Engineering - Riko P.",
+        updateDate: "19-08-2026",
+        notes: "Pekerjaan penataan jenjang dan pembuatan drop structure.",
+        lat: 0.8825,
+        lng: 128.2630,
+        stages: [
+          { name: "Tahap 1 — Penataan Lahan", status: "Selesai", target: "100%", realisasi: "100%", progress: 100 },
+          { name: "Tahap 2 — Pengaturan Drainase", status: "In Progress", target: "70%", realisasi: "50%", progress: 50 },
+          { name: "Tahap 3 — Penebaran Top Soil", status: "In Progress", target: "40%", realisasi: "20%", progress: 20 },
+          { name: "Tahap 4 — Revegetasi", status: "Belum", target: "10%", realisasi: "0%", progress: 0 },
+          { name: "Tahap 5 — Pemeliharaan", status: "Belum", target: "0%", realisasi: "0%", progress: 0 }
+        ],
+        coordinates: [
+          [128.2615, 0.8840],
+          [128.2650, 0.8840],
+          [128.2650, 0.8810],
+          [128.2615, 0.8810]
+        ]
+      }
+    ];
+
+    // Mock Photo Documentation Dataset
+    const PHOTO_DOCS = [
+      { id: 1, pit: "PIT 3A-1", category: "Before", title: "Kondisi Awal PIT 3A-1", date: "02-08-2026", coords: "UTM 52N 416720 / 8864320", desc: "Area void bekas tambang sebelum penataan lahan.", img: "https://images.unsplash.com/photo-1578328819058-b69f3a3b0f6b?w=600&auto=format&fit=crop" },
+      { id: 2, pit: "PIT 3A-1", category: "Progress", title: "Penataan Bench & Drainase PIT 3A-1", date: "12-08-2026", coords: "UTM 52N 416750 / 8864350", desc: "Aktivitas dozer dan excavator pembuatan saluran air.", img: "https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?w=600&auto=format&fit=crop" },
+      { id: 3, pit: "PIT 3A-2", category: "Progress", title: "Penebaran Soil PIT 3A-2", date: "15-08-2026", coords: "UTM 52N 417100 / 8864500", desc: "Ketebalan top soil rata-rata 50cm.", img: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=600&auto=format&fit=crop" },
+      { id: 4, pit: "PIT 3A-3", category: "After", title: "Revegetasi Tuntas PIT 3A-3", date: "18-08-2026", coords: "UTM 52N 416900 / 8864100", desc: "Tanaman legum cover crop tumbuh lebat & stabil.", img: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=600&auto=format&fit=crop" }
+    ];
+
+    // Main App Class
+    class ReklamasiApp {
+      constructor() {
+        this.currentPeriod = "Agustus 2026";
+        this.data = this.loadData();
+        this.charts = {};
+        this.currentTab = 'dashboard';
+      }
+
+      loadData() {
+        const stored = localStorage.getItem('MJL_REKLAMASI_DATA');
+        if (stored) {
+          try {
+            return JSON.parse(stored);
+          } catch(e) {
+            console.error("Error loading localStorage data", e);
+          }
+        }
+        return [...DEFAULT_REKLAMASI_DATA];
+      }
+
+      saveData() {
+        localStorage.setItem('MJL_REKLAMASI_DATA', JSON.stringify(this.data));
+        this.refreshAllViews();
+      }
+
+      resetToDefaults() {
+        localStorage.removeItem('MJL_REKLAMASI_DATA');
+        this.data = [...DEFAULT_REKLAMASI_DATA];
+        this.saveData();
+        this.showToast("Data berhasil direset ke standar pabrik PT MJL.");
+      }
+
+      init() {
+        this.updateStats();
+        this.initCharts();
+        this.renderTables();
+        this.renderProgressCards();
+        this.renderTimeline();
+        this.renderGallery();
+        this.renderAlerts();
+        this.renderReport();
+        this.renderManagementTable();
+
+        // Initialize Map
+        mapController.initMap(this.data);
+      }
+
+      refreshAllViews() {
+        this.updateStats();
+        this.updateCharts();
+        this.renderTables();
+        this.renderProgressCards();
+        this.renderTimeline();
+        this.renderAlerts();
+        this.renderReport();
+        this.renderManagementTable();
+        mapController.updateGeoJsonLayers(this.data);
+      }
+
+      updateStats() {
+        const totalArea = this.data.reduce((acc, item) => acc + item.area, 0);
+        const completedArea = this.data.filter(i => i.status === 'Selesai').reduce((acc, item) => acc + item.area, 0);
+        const processArea = this.data.filter(i => i.status === 'Dalam Proses').reduce((acc, item) => acc + item.area, 0);
+        const notStartedArea = this.data.filter(i => i.status === 'Belum Dimulai').reduce((acc, item) => acc + item.area, 0);
+        
+        const totalWeightedProgress = this.data.reduce((acc, item) => acc + (item.progress * item.area), 0);
+        const overallPct = totalArea > 0 ? (totalWeightedProgress / totalArea).toFixed(1) : 0;
+
+        document.getElementById('statTotalArea').innerText = totalArea.toFixed(2) + ' Ha';
+        document.getElementById('statCompletedArea').innerText = completedArea.toFixed(2) + ' Ha';
+        document.getElementById('statInProcessArea').innerText = processArea.toFixed(2) + ' Ha';
+        document.getElementById('statNotStartedArea').innerText = notStartedArea.toFixed(2) + ' Ha';
+        document.getElementById('statOverallProgress').innerText = overallPct + '%';
+        document.getElementById('statOverallProgressBar').style.width = overallPct + '%';
+        document.getElementById('statTotalPit').innerText = this.data.length + ' Area';
+
+        // Update Report View Metrik
+        document.getElementById('repTotalArea').innerText = totalArea.toFixed(2) + ' Ha';
+        document.getElementById('repCompletedArea').innerText = completedArea.toFixed(2) + ' Ha';
+        document.getElementById('repProcessArea').innerText = processArea.toFixed(2) + ' Ha';
+        document.getElementById('repOverallProgress').innerText = overallPct + '%';
+      }
+
+      renderAlerts() {
+        const container = document.getElementById('alertCardsContainer');
+        container.innerHTML = '';
+
+        this.data.forEach(item => {
+          let alertType = 'green';
+          let alertTitle = 'On Schedule 🟢';
+          let deviasi = item.progress - (item.status === 'Selesai' ? 100 : item.status === 'Belum Dimulai' ? 0 : 70);
+
+          if (item.status === 'Belum Dimulai') {
+            alertType = 'red';
+            alertTitle = 'Belum Dimulai 🔴';
+          } else if (item.progress < 50 && item.status === 'Dalam Proses') {
+            alertType = 'yellow';
+            alertTitle = 'Warning Deviasi 🟡';
+          }
+
+          const card = document.createElement('div');
+          card.className = `p-3 rounded-lg border text-xs flex items-center justify-between ${
+            alertType === 'green' ? 'bg-emerald-950/40 border-emerald-800 text-emerald-300' :
+            alertType === 'yellow' ? 'bg-amber-950/40 border-amber-800 text-amber-300' :
+            'bg-red-950/40 border-red-800 text-red-300'
+          }`;
+          card.innerHTML = `
+            <div>
+              <div class="font-bold">${item.name} — ${alertTitle}</div>
+              <div class="text-[11px] opacity-80">Progres: ${item.progress}% | Deviasi Target: ${deviasi > 0 ? '+' : ''}${deviasi.toFixed(0)}%</div>
+            </div>
+            <button onclick="app.showPitDetail('${item.id}')" class="text-[10px] bg-slate-900 px-2 py-1 rounded border border-slate-700 hover:bg-slate-800">Detail</button>
+          `;
+          container.appendChild(card);
+        });
+      }
+
+      initCharts() {
+        // Chart 1: Target vs Realisasi
+        const ctx1 = document.getElementById('chartTargetVSReal').getContext('2d');
+        this.charts.targetVSReal = new Chart(ctx1, {
+          type: 'bar',
+          data: {
+            labels: this.data.map(i => i.name),
+            datasets: [
+              { label: 'Target (Ha)', data: this.data.map(i => i.targetArea), backgroundColor: '#3b82f6' },
+              { label: 'Realisasi (Ha)', data: this.data.map(i => i.realArea), backgroundColor: '#10b981' }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11 } } } },
+            scales: {
+              x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+              y: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
+            }
+          }
+        });
+
+        // Chart 2: Status Doughnut
+        const ctx2 = document.getElementById('chartStatusDoughnut').getContext('2d');
+        this.charts.statusDoughnut = new Chart(ctx2, {
+          type: 'doughnut',
+          data: {
+            labels: ['Selesai', 'Dalam Proses', 'Belum Dimulai'],
+            datasets: [{
+              data: [
+                this.data.filter(i => i.status === 'Selesai').length,
+                this.data.filter(i => i.status === 'Dalam Proses').length,
+                this.data.filter(i => i.status === 'Belum Dimulai').length
+              ],
+              backgroundColor: ['#10b981', '#f59e0b', '#ef4444']
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 } } } }
+          }
+        });
+
+        // Chart 3: Progress Per PIT
+        const ctx3 = document.getElementById('chartPitProgress').getContext('2d');
+        this.charts.pitProgress = new Chart(ctx3, {
+          type: 'bar',
+          data: {
+            labels: this.data.map(i => i.name),
+            datasets: [{
+              label: 'Progress (%)',
+              data: this.data.map(i => i.progress),
+              backgroundColor: this.data.map(i => i.progress === 100 ? '#10b981' : i.progress > 0 ? '#f59e0b' : '#ef4444')
+            }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { max: 100, ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+              y: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
+            }
+          }
+        });
+
+        // Chart 4: Monthly Trend Line
+        const ctx4 = document.getElementById('chartTrendLine').getContext('2d');
+        this.charts.trendLine = new Chart(ctx4, {
+          type: 'line',
+          data: {
+            labels: ['Mei 2026', 'Juni 2026', 'Juli 2026', 'Agustus 2026'],
+            datasets: [{
+              label: 'Akumulasi Progress (%)',
+              data: [15, 32, 48, 62.5],
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              fill: true,
+              tension: 0.3
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#94a3b8' } } },
+            scales: {
+              x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+              y: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
+            }
+          }
+        });
+      }
+
+      updateCharts() {
+        if (!this.charts.targetVSReal) return;
+
+        this.charts.targetVSReal.data.labels = this.data.map(i => i.name);
+        this.charts.targetVSReal.data.datasets[0].data = this.data.map(i => i.targetArea);
+        this.charts.targetVSReal.data.datasets[1].data = this.data.map(i => i.realArea);
+        this.charts.targetVSReal.update();
+
+        this.charts.statusDoughnut.data.datasets[0].data = [
+          this.data.filter(i => i.status === 'Selesai').length,
+          this.data.filter(i => i.status === 'Dalam Proses').length,
+          this.data.filter(i => i.status === 'Belum Dimulai').length
+        ];
+        this.charts.statusDoughnut.update();
+
+        this.charts.pitProgress.data.labels = this.data.map(i => i.name);
+        this.charts.pitProgress.data.datasets[0].data = this.data.map(i => i.progress);
+        this.charts.pitProgress.data.datasets[0].backgroundColor = this.data.map(i => i.progress === 100 ? '#10b981' : i.progress > 0 ? '#f59e0b' : '#ef4444');
+        this.charts.pitProgress.update();
+      }
+
+      renderTables() {
+        // 1. Data PIT Main Table
+        const tbody = document.getElementById('pitTableBody');
+        tbody.innerHTML = '';
+
+        this.data.forEach(item => {
+          const tr = document.createElement('tr');
+          tr.className = "hover:bg-slate-800/40 transition";
+          tr.innerHTML = `
+            <td class="p-3 font-semibold text-white">${item.name}</td>
+            <td class="p-3">${item.area.toFixed(2)} Ha</td>
+            <td class="p-3 text-slate-400">${item.targetArea.toFixed(2)} Ha</td>
+            <td class="p-3 text-emerald-400 font-semibold">${item.realArea.toFixed(2)} Ha</td>
+            <td class="p-3">
+              <div class="flex items-center gap-2">
+                <span class="w-8 font-mono">${item.progress}%</span>
+                <div class="w-20 bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                  <div class="bg-emerald-500 h-1.5" style="width: ${item.progress}%"></div>
+                </div>
+              </div>
+            </td>
+            <td class="p-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold ${
+                item.status === 'Selesai' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                item.status === 'Dalam Proses' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                'bg-red-500/20 text-red-400 border border-red-500/30'
+              }">${item.status}</span>
+            </td>
+            <td class="p-3 text-slate-400">${item.pic}</td>
+            <td class="p-3 text-slate-500 font-mono">${item.updateDate}</td>
+            <td class="p-3 text-center">
+              <button onclick="app.showPitDetail('${item.id}')" class="text-sky-400 hover:text-sky-300 font-semibold px-2 py-1 rounded bg-slate-800">Detail</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        // 2. Rencana vs Realisasi Compare Table
+        const compareBody = document.getElementById('compareTableBody');
+        compareBody.innerHTML = '';
+
+        this.data.forEach(item => {
+          const devArea = item.realArea - item.targetArea;
+          const targetPct = item.status === 'Selesai' ? 100 : 80;
+          const devPct = item.progress - targetPct;
+
+          const tr = document.createElement('tr');
+          tr.className = "hover:bg-slate-800/40 transition";
+          tr.innerHTML = `
+            <td class="p-3 font-semibold text-white">${item.name}</td>
+            <td class="p-3">${item.targetArea.toFixed(2)} Ha</td>
+            <td class="p-3">${item.realArea.toFixed(2)} Ha</td>
+            <td class="p-3 font-semibold ${devArea >= 0 ? 'text-emerald-400' : 'text-red-400'}">${devArea >= 0 ? '+' : ''}${devArea.toFixed(2)} Ha</td>
+            <td class="p-3">${targetPct}%</td>
+            <td class="p-3 font-semibold">${item.progress}%</td>
+            <td class="p-3 font-semibold ${devPct >= 0 ? 'text-emerald-400' : 'text-amber-400'}">${devPct >= 0 ? '+' : ''}${devPct.toFixed(0)}%</td>
+            <td class="p-3">
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded ${devPct >= 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}">
+                ${devPct >= 0 ? 'Memenuhi Target' : 'Di Bawah Target'}
+              </span>
+            </td>
+          `;
+          compareBody.appendChild(tr);
+        });
+      }
+
+      renderProgressCards() {
+        const container = document.getElementById('phaseCardsContainer');
+        container.innerHTML = '';
+
+        this.data.forEach(item => {
+          const card = document.createElement('div');
+          card.className = "bg-slate-900 border border-slate-800 rounded-xl p-5 shadow space-y-4";
+          
+          let stagesHTML = '';
+          item.stages.forEach(stg => {
+            stagesHTML += `
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs py-2 border-b border-slate-800/60 gap-1">
+                <span class="font-semibold text-slate-300 w-48">${stg.name}</span>
+                <div class="flex items-center gap-4 flex-1 max-w-md">
+                  <div class="flex-1 bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div class="bg-emerald-500 h-2 rounded-full" style="width: ${stg.progress}%"></div>
+                  </div>
+                  <span class="w-12 text-right font-mono text-slate-400">${stg.progress}%</span>
+                </div>
+                <span class="text-[10px] px-2 py-0.5 rounded font-bold ${
+                  stg.status === 'Selesai' ? 'bg-emerald-500/20 text-emerald-400' :
+                  stg.status === 'In Progress' ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-500'
+                }">${stg.status}</span>
+              </div>
+            `;
+          });
+
+          card.innerHTML = `
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 class="text-base font-bold text-white">${item.name} — <span class="text-emerald-400">${item.area} Ha</span></h3>
+                <p class="text-xs text-slate-400">PIC: ${item.pic} | Update: ${item.updateDate}</p>
+              </div>
+              <div class="text-right">
+                <span class="text-lg font-bold text-emerald-400">${item.progress}%</span>
+                <p class="text-[10px] text-slate-500">Progres Akumulasi</p>
+              </div>
+            </div>
+            <div class="space-y-1">
+              ${stagesHTML}
+            </div>
+          `;
+          container.appendChild(card);
+        });
+      }
+
+      renderTimeline() {
+        const container = document.getElementById('timelineListContainer');
+        container.innerHTML = '';
+
+        const events = [
+          { date: "01 Agustus 2026", title: "Kickoff Pekerjaan Reklamasi PIT 3A-1", desc: "Pembersihan area void dan penyusunan slope stability.", icon: "fa-flag" },
+          { date: "05 Agustus 2026", title: "Grading & Penataan Lahan PIT 3A-2", desc: "Aktivitas pembentukan jenjang kontur tingkat 2.", icon: "fa-tractor" },
+          { date: "10 Agustus 2026", title: "Penebaran Top Soil PIT 3A-3", desc: "Ketebalan rata-rata 50cm diselesaikan 100%.", icon: "fa-layer-group" },
+          { date: "18 Agustus 2026", title: "Penanaman Revegetasi Cover Crop", desc: "Penanaman Centrosema pubescens & Calopogonium di PIT 3A-3.", icon: "fa-seedling" },
+          { date: "20 Agustus 2026", title: "Monitoring Lapangan Tim Joint Survey", desc: "Verifikasi lapangan progres fisik oleh Environmental & Mining Dept.", icon: "fa-clipboard-check" }
+        ];
+
+        events.forEach(ev => {
+          const div = document.createElement('div');
+          div.className = "flex items-start space-x-4 pl-4";
+          div.innerHTML = `
+            <div class="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center font-bold text-xs flex-shrink-0 z-10">
+              <i class="fa-solid ${ev.icon}"></i>
+            </div>
+            <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 flex-1">
+              <span class="text-[10px] font-mono text-emerald-400">${ev.date}</span>
+              <h4 class="text-xs font-bold text-white mt-0.5">${ev.title}</h4>
+              <p class="text-xs text-slate-400 mt-1">${ev.desc}</p>
+            </div>
+          `;
+          container.appendChild(div);
+        });
+      }
+
+      renderGallery(filterCategory = 'ALL') {
+        const grid = document.getElementById('photoGalleryGrid');
+        grid.innerHTML = '';
+
+        const filtered = filterCategory === 'ALL' ? PHOTO_DOCS : PHOTO_DOCS.filter(p => p.category === filterCategory);
+
+        filtered.forEach(photo => {
+          const card = document.createElement('div');
+          card.className = "bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow group hover:border-emerald-500/50 transition cursor-pointer";
+          card.onclick = () => this.openLightbox(photo.img, `${photo.title} (${photo.pit}) - ${photo.desc}`);
+
+          card.innerHTML = `
+            <div class="h-40 overflow-hidden relative">
+              <img src="${photo.img}" alt="${photo.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+              <span class="absolute top-2 right-2 text-[10px] font-bold bg-slate-950/80 text-emerald-400 px-2 py-0.5 rounded border border-slate-700">
+                ${photo.category}
+              </span>
+            </div>
+            <div class="p-3 text-xs space-y-1">
+              <div class="font-bold text-white">${photo.title}</div>
+              <p class="text-slate-400 text-[11px]">${photo.pit} | ${photo.date}</p>
+              <p class="text-slate-500 text-[10px] truncate">${photo.desc}</p>
+            </div>
+          `;
+          grid.appendChild(card);
+        });
+      }
+
+      renderReport() {
+        const tbody = document.getElementById('reportTableBody');
+        tbody.innerHTML = '';
+
+        this.data.forEach(item => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="p-2 border border-slate-800 font-bold">${item.name}</td>
+            <td class="p-2 border border-slate-800">${item.area.toFixed(2)}</td>
+            <td class="p-2 border border-slate-800">${item.realArea.toFixed(2)}</td>
+            <td class="p-2 border border-slate-800">${item.progress}%</td>
+            <td class="p-2 border border-slate-800">${item.status}</td>
+            <td class="p-2 border border-slate-800">${item.pic}</td>
+            <td class="p-2 border border-slate-800 text-[11px] text-slate-400">${item.notes}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      renderManagementTable() {
+        const tbody = document.getElementById('mgmtTableBody');
+        tbody.innerHTML = '';
+
+        this.data.forEach(item => {
+          const tr = document.createElement('tr');
+          tr.className = "hover:bg-slate-800/40";
+          tr.innerHTML = `
+            <td class="p-2 font-bold text-white">${item.name}</td>
+            <td class="p-2">${item.area} Ha</td>
+            <td class="p-2">${item.progress}%</td>
+            <td class="p-2"><span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300">${item.status}</span></td>
+            <td class="p-2">${item.pic}</td>
+            <td class="p-2 text-center space-x-2">
+              <button onclick="app.openModalEditPIT('${item.id}')" class="text-sky-400 hover:text-sky-300"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+              <button onclick="app.deletePIT('${item.id}')" class="text-red-400 hover:text-red-300"><i class="fa-solid fa-trash"></i> Hapus</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      switchTab(tabId) {
+        document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
+        document.querySelectorAll('.sidebar-btn').forEach(btn => btn.classList.remove('active', 'bg-slate-800', 'text-white'));
+
+        const targetSec = document.getElementById(`sec-${tabId}`);
+        const targetBtn = document.getElementById(`nav-${tabId}`);
+
+        if (targetSec) targetSec.classList.remove('hidden');
+        if (targetBtn) targetBtn.classList.add('active', 'bg-slate-800', 'text-white');
+
+        this.currentTab = tabId;
+
+        if (tabId === 'map') {
+          setTimeout(() => mapController.map.invalidateSize(), 200);
+        }
+      }
+
+      changePeriod(val) {
+        this.currentPeriod = val;
+        document.getElementById('dashPeriodText').innerText = val;
+        document.getElementById('repPeriod').innerText = val;
+        this.showToast(`Periode monitoring diubah ke ${val}`);
+      }
+
+      showPitDetail(id) {
+        const pit = this.data.find(i => i.id === id);
+        if (!pit) return;
+
+        const modal = document.getElementById('pitDetailModal');
+        const content = document.getElementById('pitModalContent');
+
+        content.innerHTML = `
+          <div class="space-y-4 text-xs">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 class="text-lg font-bold text-white">${pit.name}</h3>
+                <p class="text-slate-400">Target Periode: ${this.currentPeriod}</p>
+              </div>
+              <span class="px-3 py-1 rounded-full font-bold text-xs ${
+                pit.status === 'Selesai' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
+              }">${pit.status}</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 bg-slate-950 p-3 rounded-lg border border-slate-800">
+              <div><span class="text-slate-500">Luas Total:</span> <strong class="text-white">${pit.area} Ha</strong></div>
+              <div><span class="text-slate-500">Realisasi:</span> <strong class="text-emerald-400">${pit.realArea} Ha</strong></div>
+              <div><span class="text-slate-500">PIC Engineering:</span> <strong class="text-white">${pit.pic}</strong></div>
+              <div><span class="text-slate-500">Last Update:</span> <strong class="text-slate-300">${pit.updateDate}</strong></div>
+            </div>
+
+            <div>
+              <div class="flex justify-between font-bold text-slate-300 mb-1">
+                <span>Progress Reklamasi</span>
+                <span>${pit.progress}%</span>
+              </div>
+              <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                <div class="bg-emerald-500 h-2" style="width: ${pit.progress}%"></div>
+              </div>
+            </div>
+
+            <div>
+              <h4 class="font-bold text-white mb-1">Catatan Monitoring Lapangan:</h4>
+              <p class="text-slate-400 bg-slate-950 p-2.5 rounded border border-slate-800">${pit.notes}</p>
+            </div>
+
+            <div class="pt-2 flex justify-end gap-2">
+              <button onclick="app.closePitModal()" class="px-4 py-2 bg-slate-800 text-slate-300 rounded hover:bg-slate-700">Tutup</button>
+            </div>
+          </div>
+        `;
+
+        modal.classList.remove('hidden');
+      }
+
+      closePitModal() { document.getElementById('pitDetailModal').classList.add('hidden'); }
+
+      openModalNewPIT() {
+        document.getElementById('formModalTitle').innerText = "Tambah Data PIT Baru";
+        document.getElementById('pitCrudForm').reset();
+        document.getElementById('formPitId').value = "";
+        document.getElementById('pitFormModal').classList.remove('hidden');
+      }
+
+      openModalEditPIT(id) {
+        const pit = this.data.find(i => i.id === id);
+        if (!pit) return;
+
+        document.getElementById('formModalTitle').innerText = "Edit Data PIT";
+        document.getElementById('formPitId').value = pit.id;
+        document.getElementById('formPitName').value = pit.name;
+        document.getElementById('formPitArea').value = pit.area;
+        document.getElementById('formPitStatus').value = pit.status;
+        document.getElementById('formPitProgress').value = pit.progress;
+        document.getElementById('formPitPic').value = pit.pic;
+        document.getElementById('formPitNotes').value = pit.notes;
+
+        document.getElementById('pitFormModal').classList.remove('hidden');
+      }
+
+      closeFormModal() { document.getElementById('pitFormModal').classList.add('hidden'); }
+
+      handleFormSubmit(e) {
+        e.preventDefault();
+        const id = document.getElementById('formPitId').value || `pit-${Date.now()}`;
+        const name = document.getElementById('formPitName').value;
+        const area = parseFloat(document.getElementById('formPitArea').value);
+        const status = document.getElementById('formPitStatus').value;
+        const progress = parseInt(document.getElementById('formPitProgress').value);
+        const pic = document.getElementById('formPitPic').value;
+        const notes = document.getElementById('formPitNotes').value;
+
+        const existingIndex = this.data.findIndex(i => i.id === id);
+
+        const newObj = {
+          id, name, area, status, progress, pic, notes,
+          targetArea: area,
+          realArea: (area * (progress / 100)),
+          updateDate: "20-08-2026",
+          lat: 0.8830, lng: 128.2580,
+          stages: [
+            { name: "Tahap 1 — Penataan Lahan", status: progress > 20 ? "Selesai" : "In Progress", target: "100%", realisasi: `${progress}%`, progress },
+            { name: "Tahap 2 — Pengaturan Drainase", status: progress > 40 ? "Selesai" : "In Progress", target: "100%", realisasi: `${progress}%`, progress },
+            { name: "Tahap 3 — Penebaran Top Soil", status: progress > 60 ? "Selesai" : "In Progress", target: "100%", realisasi: `${progress}%`, progress },
+            { name: "Tahap 4 — Revegetasi", status: progress > 80 ? "Selesai" : "In Progress", target: "100%", realisasi: `${progress}%`, progress },
+            { name: "Tahap 5 — Pemeliharaan", status: progress === 100 ? "Selesai" : "Belum", target: "100%", realisasi: `${progress}%`, progress }
+          ],
+          coordinates: [
+            [128.2550, 0.8830],
+            [128.2580, 0.8830],
+            [128.2580, 0.8800],
+            [128.2550, 0.8800]
+          ]
+        };
+
+        if (existingIndex >= 0) {
+          this.data[existingIndex] = { ...this.data[existingIndex], ...newObj };
+        } else {
+          this.data.push(newObj);
+        }
+
+        this.saveData();
+        this.closeFormModal();
+        this.showToast("Data PIT berhasil disimpan!");
+      }
+
+      deletePIT(id) {
+        this.data = this.data.filter(i => i.id !== id);
+        this.saveData();
+        this.showToast("Data PIT berhasil dihapus.");
+      }
+
+      openLightbox(img, caption) {
+        document.getElementById('lightboxImg').src = img;
+        document.getElementById('lightboxCaption').innerText = caption;
+        document.getElementById('lightboxModal').classList.remove('hidden');
+      }
+
+      closeLightbox() { document.getElementById('lightboxModal').classList.add('hidden'); }
+
+      filterGallery(cat) {
+        document.querySelectorAll('.gallery-filter-btn').forEach(btn => btn.classList.remove('active', 'bg-emerald-600', 'text-white'));
+        this.renderGallery(cat);
+      }
+
+      filterTable() {
+        const search = document.getElementById('tableSearchInput').value.toLowerCase();
+        const status = document.getElementById('tableStatusFilter').value;
+        const sort = document.getElementById('tableSortFilter').value;
+
+        let filtered = this.data.filter(item => {
+          const matchSearch = item.name.toLowerCase().includes(search) || item.pic.toLowerCase().includes(search);
+          const matchStatus = status === 'ALL' || item.status === status;
+          return matchSearch && matchStatus;
+        });
+
+        if (sort === 'progress-desc') filtered.sort((a,b) => b.progress - a.progress);
+        if (sort === 'progress-asc') filtered.sort((a,b) => a.progress - b.progress);
+        if (sort === 'area-desc') filtered.sort((a,b) => b.area - a.area);
+
+        const tbody = document.getElementById('pitTableBody');
+        tbody.innerHTML = '';
+
+        filtered.forEach(item => {
+          const tr = document.createElement('tr');
+          tr.className = "hover:bg-slate-800/40 transition";
+          tr.innerHTML = `
+            <td class="p-3 font-semibold text-white">${item.name}</td>
+            <td class="p-3">${item.area.toFixed(2)} Ha</td>
+            <td class="p-3 text-slate-400">${item.targetArea.toFixed(2)} Ha</td>
+            <td class="p-3 text-emerald-400 font-semibold">${item.realArea.toFixed(2)} Ha</td>
+            <td class="p-3">${item.progress}%</td>
+            <td class="p-3">${item.status}</td>
+            <td class="p-3 text-slate-400">${item.pic}</td>
+            <td class="p-3 text-slate-500 font-mono">${item.updateDate}</td>
+            <td class="p-3 text-center">
+              <button onclick="app.showPitDetail('${item.id}')" class="text-sky-400 font-semibold px-2 py-1 bg-slate-800 rounded">Detail</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      exportCSV() {
+        let csv = "Nama PIT,Luas (Ha),Progress (%),Status,PIC,Last Update\n";
+        this.data.forEach(i => {
+          csv += `"${i.name}",${i.area},${i.progress},"${i.status}","${i.pic}","${i.updateDate}"\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `MJL_Reklamasi_Data_${Date.now()}.csv`;
+        a.click();
+      }
+
+      exportJSON() {
+        const geojson = {
+          type: "FeatureCollection",
+          features: this.data.map(item => ({
+            type: "Feature",
+            properties: {
+              name: item.name,
+              area: item.area,
+              progress: item.progress,
+              status: item.status,
+              pic: item.pic
+            },
+            geometry: {
+              type: "Polygon",
+              coordinates: [[...item.coordinates, item.coordinates[0]]]
+            }
+          }))
+        };
+        const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `MJL_Reklamasi_GeoJSON_${Date.now()}.json`;
+        a.click();
+      }
+
+      importGeoJSON(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const parsed = JSON.parse(event.target.result);
+            if (parsed.type === "FeatureCollection" && parsed.features) {
+              this.showToast(`Berhasil mengimpor ${parsed.features.length} fitur GeoJSON!`);
+            }
+          } catch(err) {
+            this.showToast("Gagal membaca file GeoJSON valid.");
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      toggleTheme() {
+        document.documentElement.classList.toggle('dark');
+        this.showToast("Mode tampilan diperbarui.");
+      }
+
+      showToast(msg) {
+        const toast = document.createElement('div');
+        toast.className = "fixed bottom-5 right-5 bg-emerald-600 text-white text-xs px-4 py-3 rounded-lg shadow-2xl z-[3000] border border-emerald-400 font-semibold animate-bounce";
+        toast.innerText = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+      }
+    }
+
+    // GIS Map Controller
+    class GISMapController {
+      constructor() {
+        this.map = null;
+        this.geoJsonLayer = null;
+        this.hatchLayer = null;
+        this.utmControl = null;
+      }
+
+      initMap(reklamasiData) {
+        // Base Coords for Site Pulau Mabuli, Halmahera Timur
+        const centerLat = 0.8820;
+        const centerLng = 128.2580;
+
+        this.map = L.map('map', {
+          center: [centerLat, centerLng],
+          zoom: 15,
+          zoomControl: true
+        });
+
+        // Basemaps
+        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; OpenStreetMap'
+        });
+
+        const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          attribution: 'Tiles &copy; Esri'
+        });
+
+        satellite.addTo(this.map); // Default satellite mode
+
+        const baseMaps = {
+          "Satelit Esri": satellite,
+          "OpenStreetMap": osm
+        };
+
+        L.control.layers(baseMaps).addTo(this.map);
+
+        // Scale bar
+        L.control.scale({ imperial: false }).addTo(this.map);
+
+        // Add UTM Coordinate Tracker
+        this.addUtmCoordinateTracker();
+
+        // Render GeoJSON polygons
+        this.updateGeoJsonLayers(reklamasiData);
+      }
+
+      addUtmCoordinateTracker() {
+        const utmDiv = L.control({ position: 'bottomleft' });
+        utmDiv.onAdd = function() {
+          const div = L.DomUtil.create('div', 'leaflet-control-utm');
+          div.id = 'utmDisplayBar';
+          div.innerHTML = 'UTM Zone 52N | E: --- | N: ---';
+          return div;
+        };
+        utmDiv.addTo(this.map);
+
+        this.map.on('mousemove', (e) => {
+          // UTM Zone 52N Projection string
+          const utm52N = "+proj=utm +zone=52 +datum=WGS84 +units=m +no_defs";
+          const wgs84 = "+proj=longlat +datum=WGS84 +no_defs";
+          
+          try {
+            const result = proj4(wgs84, utm52N, [e.latlng.lng, e.latlng.lat]);
+            document.getElementById('utmDisplayBar').innerHTML = 
+              `<strong>UTM Zone 52N</strong> | Easting: <strong>${result[0].toFixed(0)}</strong> | Northing: <strong>${result[1].toFixed(0)}</strong>`;
+          } catch(err) {
+            document.getElementById('utmDisplayBar').innerHTML = `Lat: ${e.latlng.lat.toFixed(5)}, Lng: ${e.latlng.lng.toFixed(5)}`;
+          }
+        });
+      }
+
+      updateGeoJsonLayers(data) {
+        if (this.geoJsonLayer) {
+          this.map.removeLayer(this.geoJsonLayer);
+        }
+
+        const geoJsonData = {
+          type: "FeatureCollection",
+          features: data.map(item => ({
+            type: "Feature",
+            properties: item,
+            geometry: {
+              type: "Polygon",
+              coordinates: [[...item.coordinates, item.coordinates[0]]]
+            }
+          }))
+        };
+
+        this.geoJsonLayer = L.geoJSON(geoJsonData, {
+          style: (feature) => {
+            const status = feature.properties.status;
+            let color = '#3b82f6';
+            if (status === 'Selesai') color = '#10b981';
+            if (status === 'Dalam Proses') color = '#f59e0b';
+            if (status === 'Belum Dimulai') color = '#ef4444';
+
+            return {
+              color: color,
+              weight: 2,
+              fillColor: color,
+              fillOpacity: 0.45
+            };
+          },
+          onEachFeature: (feature, layer) => {
+            const p = feature.properties;
+            const popupContent = `
+              <div class="text-xs space-y-2 p-1 min-w-[200px]">
+                <div class="font-bold text-sm text-emerald-400 border-b border-slate-700 pb-1">${p.name}</div>
+                <div><span class="text-slate-400">Luas:</span> <strong class="text-white">${p.area} Ha</strong></div>
+                <div><span class="text-slate-400">Status:</span> <strong>${p.status}</strong></div>
+                <div><span class="text-slate-400">Progress:</span> <strong class="text-emerald-400">${p.progress}%</strong></div>
+                <div><span class="text-slate-400">PIC:</span> ${p.pic}</div>
+                <button onclick="app.showPitDetail('${p.id}')" class="w-full mt-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1 px-2 rounded text-[11px]">
+                  Lihat Detail PIT
+                </button>
+              </div>
+            `;
+            layer.bindPopup(popupContent);
+
+            layer.on('mouseover', function () {
+              this.setStyle({ fillOpacity: 0.75, weight: 3 });
+            });
+            layer.on('mouseout', function () {
+              mapController.geoJsonLayer.resetStyle(this);
+            });
+          }
+        }).addTo(this.map);
+      }
+
+      fitBounds() {
+        if (this.geoJsonLayer) {
+          this.map.fitBounds(this.geoJsonLayer.getBounds());
+        }
+      }
+
+      printMap() {
+        window.print();
+      }
+
+      toggleHatchLayer() {
+        app.showToast("Overlay Arsiran Rencana Reklamasi Diperbarui.");
+      }
+    }
+
+    // Initialize Global App Objects
+    const app = new ReklamasiApp();
+    const mapController = new GISMapController();
+
+    window.onload = function() {
+      app.init();
+    };
+  </script>
+</body>
+</html>
